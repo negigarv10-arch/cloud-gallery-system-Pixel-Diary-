@@ -1,0 +1,41 @@
+name: Validate Firebase credentials
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'albumino/**'
+
+jobs:
+  validate-firebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          cd albumino
+          npm ci
+
+      - name: Write service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT secret is not set";
+            exit 2;
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT" > albumino/service-account.json
+
+      - name: Run bucket validation
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+        run: |
+          node albumino/scripts/validate-bucket.js
